@@ -1,10 +1,19 @@
+import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
-import java.awt.GridLayout;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.io.File;
+import java.io.IOException;
 import java.util.Random;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.UnsupportedAudioFileException;
+import javax.swing.ImageIcon;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 public class pingPong extends JPanel { // Cambiado de JFrame a JPanel
@@ -21,14 +30,14 @@ public class pingPong extends JPanel { // Cambiado de JFrame a JPanel
 
     private boolean pelotaHaciaDerecha = true;
     private boolean pelotaHaciaAbajo = true;
+    private ImageIcon imagenFondo;
+    static pingPong juego;
 
     Font fuente;
+    private int score;
 
-    public void contador() {
-
-    }
-
-    static pingPong juego;
+    private String s = "Puntuacion: ";
+    private static long velocidad = 10;
 
     public pingPong() {
         this.x = num_Aleatorio();
@@ -38,19 +47,69 @@ public class pingPong extends JPanel { // Cambiado de JFrame a JPanel
         this.ancho = 15;
         this.largo = 55;
         this.diamtero = 20;
-        this.fuente = new Font("Monospaced", Font.BOLD, 20);
-        this.setSize(400,500);
+        this.fuente = new Font("Monospaced", Font.BOLD, 15);
+        this.imagenFondo = new ImageIcon("Assets/fondo2.gif");
+        this.setSize(400, 600);
+    }
+
+    public boolean pegoEnRaqueta() {
+        if (x >= pos_x && x <= pos_x + largo) {
+            // System.out.println("si pego");
+            score = score + 10;
+            return true;
+        }
+        return false;
+    }
+
+    public static void audio(int eleccion) throws UnsupportedAudioFileException, IOException, LineUnavailableException {
+
+        switch (eleccion) {
+            case 1: {
+                AudioInputStream audio = AudioSystem
+                        .getAudioInputStream((new File("Assets/musica.wav")).getAbsoluteFile());
+                Clip sonido = AudioSystem.getClip();
+                sonido.open(audio);
+                sonido.start();
+                sonido.loop(-1);
+                break;
+            }
+            case 2: {
+                AudioInputStream colision = AudioSystem
+                        .getAudioInputStream((new File("Assets/colision.wav")).getAbsoluteFile());
+                Clip sonido = AudioSystem.getClip();
+                sonido.open(colision);
+                sonido.start();
+                break;
+            }
+            case 3: {
+                AudioInputStream perdiste = AudioSystem
+                        .getAudioInputStream((new File("Assets/muerte.wav")).getAbsoluteFile());
+                Clip sonido = AudioSystem.getClip();
+                sonido.open(perdiste);
+                sonido.start();
+                break;
+            }
+            default:
+                break;
+        }
+
     }
 
     public int num_Aleatorio() {
         Random r = new Random();
-        return r.nextInt(380) + 20;
+        return r.nextInt(360) + 20;
     }
 
     @Override
     public void paint(Graphics g) {
-        super.paint(g);
 
+        super.paint(g);
+        g.drawImage(imagenFondo.getImage(), 0, 0, getWidth(), getHeight(), this);
+        g.setColor(Color.WHITE);
+
+        g.setFont(fuente);
+        g.drawString(s + score, 250, 10);
+        // g.drawLine(0, pos_y, 400, pos_y);
         g.fillRect(pos_x, pos_y, largo, ancho);
         g.fillOval(x, y, diamtero, diamtero);
     }
@@ -64,7 +123,7 @@ public class pingPong extends JPanel { // Cambiado de JFrame a JPanel
         }
     }
 
-    private void movimientoPelota() {
+    private void movimientoPelota() throws UnsupportedAudioFileException, IOException, LineUnavailableException {
 
         if (pelotaHaciaDerecha) {
             x = x + 1;
@@ -78,44 +137,66 @@ public class pingPong extends JPanel { // Cambiado de JFrame a JPanel
             y = y - 1;
         }
 
-        if (y == getHeight() - diamtero) {
-            y = y - 1;
-            pelotaHaciaAbajo = false;
+        if (y == (pos_y - diamtero)) {
+            if (pegoEnRaqueta()) {
+                y = y - 1;
+                pelotaHaciaAbajo = false;
+                pingPong.audio(2);
+                if (score >= 10) {
+                    velocidad = (long) (velocidad - score * (0.025));
+                }
+            } else {
+                JFrame ventanaPerdida = new JFrame("Ya perdiste pipipi");
+                JLabel imagen = new JLabel();
+                ImageIcon img = new ImageIcon("Assets/gameover.gif");
+                imagen.setIcon(img);
+                ventanaPerdida.setSize(300, 120);
+                ventanaPerdida.setLocationRelativeTo(this);
+                ventanaPerdida.add(imagen);
+                ventanaPerdida.setVisible(true);
+                System.out.println("perdiste");
+                velocidad = 80;
+                audio(3);
+            }
         }
 
         if (y == diamtero) {
             y = y + 1;
             pelotaHaciaAbajo = true;
+            pingPong.audio(2);
         }
 
         if (x == getWidth() - diamtero) {
             x = x - 1;
             pelotaHaciaDerecha = false;
+            pingPong.audio(2);
         }
 
         if (x == 0) {
             x = x + 1;
             pelotaHaciaDerecha = true;
+            pingPong.audio(2);
         }
     }
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args)
+            throws InterruptedException, UnsupportedAudioFileException, IOException, LineUnavailableException {
         // Crear ventana principal
-        score p2 = new score();
-        JFrame Ventana_Principal = new JFrame("Plantilla básica");
+        JFrame Ventana_Principal = new JFrame("Ping Pong");
         Ventana_Principal.setSize(400, 600);
         Ventana_Principal.setVisible(true);
+        Ventana_Principal.setResizable(false);
+        Ventana_Principal.setLocationRelativeTo(null);
         Ventana_Principal.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        Ventana_Principal.setLayout(new GridLayout(2,1));
         Ventana_Principal.addKeyListener(new KeyListener() {
             @Override
             public void keyPressed(KeyEvent e) {
                 String tecla = e.getKeyText(e.getKeyCode());
-                System.out.println("La letra es " + tecla);
+                // System.out.println("La letra es " + tecla);
 
-                if (tecla.equals("Left")) {
+                if (tecla.equals("Left") || tecla.equals("A")) {
                     juego.posicionRaqueta("Left");
-                } else {
+                } else if (tecla.equals("Right") || tecla.equals("D")) {
                     juego.posicionRaqueta("Right");
                 }
             }
@@ -132,14 +213,18 @@ public class pingPong extends JPanel { // Cambiado de JFrame a JPanel
         });
 
         juego = new pingPong();
-        Ventana_Principal.add(p2);
         Ventana_Principal.add(juego);
+
+        try {
+            audio(1);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
 
         while (true) {
             juego.movimientoPelota();
             juego.repaint();
-            p2.repaint();
-            Thread.sleep(10);
+            Thread.sleep(velocidad);
         }
     }
 
